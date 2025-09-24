@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador - Cadastro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('logout') }}" class="logout-btn">Sair</a>
+        <h1>Cadastro de Colaborador</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('cadastrar_colaborador') }}" method="post">
+            <label for="matricula">Matrícula:</label>
+            <input type="text" id="matricula" name="matricula" required>
+
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" name="nome" required>
+
+            <label for="funcao">Função:</label>
+            <input type="text" id="funcao" name="funcao">
+
+            <label for="area">Área:</label>
+            <input type="text" id="area" name="area">
+            
+            <button type="submit">Cadastrar</button>
+        </form>
+
+        <a href="{{ url_for('relatorio_completo') }}" class="back-link">Ver Relatório Completo</a>
+    </div>
+</body>
+</html>

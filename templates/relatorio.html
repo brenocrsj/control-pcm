@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Acessos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="report-container">
+        <h1 class="center-text">Relatório de Acessos</h1>
+        
+        <form action="{{ url_for('relatorio_completo') }}" method="get" class="filter-form">
+            <div class="form-group">
+                <label for="data_inicio">Data e Hora de Início:</label>
+                <input type="datetime-local" id="data_inicio" name="data_inicio">
+            </div>
+            <div class="form-group">
+                <label for="data_fim">Data e Hora de Fim:</label>
+                <input type="datetime-local" id="data_fim" name="data_fim">
+            </div>
+            <button type="submit" class="filter-btn">Filtrar</button>
+        </form>
+
+        <p class="center-text">Total de registros: {{ registros | length }}</p>
+        
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Data e Hora</th>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>Função</th>
+                    <th>Área</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro['data_hora'] }}</td>
+                    <td>{{ registro['matricula'] }}</td>
+                    <td>{{ registro['nome'] }}</td>
+                    <td>{{ registro['funcao'] }}</td>
+                    <td>{{ registro['area'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="link-group">
+            <a href="{{ url_for('admin_cadastro') }}" class="nav-link back-to-admin">Voltar para o Administrador</a>
+            <a href="{{ url_for('logout') }}" class="nav-link logout-btn">Sair</a>
+        </div>
+        
+        <div class="export-options">
+            <a href="{{ url_for('exportar_excel') }}" class="export-btn excel">Exportar para Excel</a>
+            <a href="{{ url_for('exportar_pdf') }}" class="export-btn pdf">Exportar para PDF</a>
+        </div>
+    </div>
+</body>
+</html>

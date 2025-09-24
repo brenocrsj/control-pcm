@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso ao Refeitório</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <a href="#" class="config-icon" onclick="document.getElementById('senha-modal').style.display='flex';">
+        <i class="fas fa-cog" style="color: #4CAF50;"></i>
+    </a>
+
+    <div class="acesso-container" id="acesso-container">
+        <h1>Refeitório</h1>
+        <p>Use o teclado para digitar sua matrícula.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form id="form-acesso" action="{{ url_for('acesso_refeitorio') }}" method="post">
+            <input type="hidden" id="matricula" name="matricula">
+            <div id="display-matricula"></div>
+        </form>
+
+        <div class="keypad">
+            <button class="key" onclick="digitar_numero('1')">1</button>
+            <button class="key" onclick="digitar_numero('2')">2</button>
+            <button class="key" onclick="digitar_numero('3')">3</button>
+            <button class="key" onclick="digitar_numero('4')">4</button>
+            <button class="key" onclick="digitar_numero('5')">5</button>
+            <button class="key" onclick="digitar_numero('6')">6</button>
+            <button class="key" onclick="digitar_numero('7')">7</button>
+            <button class="key" onclick="digitar_numero('8')">8</button>
+            <button class="key" onclick="digitar_numero('9')">9</button>
+            <button class="key" onclick="digitar_numero('0')">0</button>
+            <button class="key action-key" onclick="limpar_matricula()">Limpar</button>
+            <button class="key action-key" onclick="deletar_ultimo()">Deletar</button>
+        </div>
+
+        <button onclick="enviar_acesso()" class="btn-acesso">Registrar Refeição</button>
+    </div>
+
+    <div id="senha-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="document.getElementById('senha-modal').style.display='none'">&times;</span>
+            <h2>Acesso do Administrador</h2>
+            <form action="{{ url_for('login_admin') }}" method="post">
+                <label for="senha">Senha:</label>
+                <input type="password" id="senha" name="senha" required>
+                <button type="submit">Entrar</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const displayMatricula = document.getElementById('display-matricula');
+        const inputMatricula = document.getElementById('matricula');
+        const acessoContainer = document.getElementById('acesso-container');
+        
+        function digitar_numero(numero) {
+            displayMatricula.textContent += numero;
+            inputMatricula.value += numero;
+        }
+
+        function limpar_matricula() {
+            displayMatricula.textContent = '';
+            inputMatricula.value = '';
+        }
+
+        function deletar_ultimo() {
+            displayMatricula.textContent = displayMatricula.textContent.slice(0, -1);
+            inputMatricula.value = inputMatricula.value.slice(0, -1);
+        }
+
+        async function enviar_acesso() {
+            const formData = new FormData(document.getElementById('form-acesso'));
+            
+            try {
+                const response = await fetch('/acesso_refeitorio', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    acessoContainer.classList.remove('danger');
+                    acessoContainer.classList.add('success');
+                } else {
+                    acessoContainer.classList.remove('success');
+                    acessoContainer.classList.add('danger');
+                }
+                
+                limpar_matricula();
+                
+                setTimeout(() => {
+                    acessoContainer.classList.remove('success', 'danger');
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+            }
+        }
+    </script>
+</body>
+</html>
