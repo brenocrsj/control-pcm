@@ -2,18 +2,17 @@ import os
 from datetime import date, datetime
 
 from flask import Flask, flash, redirect, render_template, request, url_for
-from flask_migrate import Migrate
 
 from config import Config
 from models import (
-    OPEN_OS_STATUSES,
-    OsStatus,
-    PlanType,
-    WorkOrder,
-    MaintenanceExecution,
-    MaintenancePlan,
-    Equipment,
     db,
+    Equipment,
+    MaintenancePlan,
+    MaintenanceExecution,
+    WorkOrder,
+    PlanType,
+    OsStatus,
+    HorimeterLog,  # <- precisa existir no models.py
 )
 
 
@@ -22,7 +21,6 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
-    Migrate(app, db)
 
     # -------------------------
     # Helpers
@@ -42,13 +40,23 @@ def create_app():
             return None
 
     # -------------------------
-    # Dashboard
+    # Dashboard (filtro por alertas)
     # -------------------------
     @app.route("/")
     def dashboard():
-        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+        equipamentos = (
+            Equipment.query.filter_by(ativo=True)
+            .order_by(Equipment.nome.asc())
+            .all()
+        )
 
         default_alert = app.config.get("DEFAULT_ALERT_HOURS", 20)
+
+        # filtro:
+        # - alertas (padrão): só preventiva vencida/próxima
+        # - alertas_e_backlog: preventiva vencida/próxima OU backlog > 0
+        # - all: todos
+        filtro = request.args.get("filtro", "alertas")
 
         cards = []
         total_vencidas = 0
@@ -62,7 +70,7 @@ def create_app():
             def summarize(plans):
                 if not plans:
                     return {"status": "SEM_PLANO", "faltam": None, "texto": "Sem plano"}
-                # pega o mais crítico (menor faltam)
+
                 remaining_list = [(p, p.remaining_hours(e.horimetro_atual)) for p in plans]
                 p_min, faltam_min = sorted(remaining_list, key=lambda x: x[1])[0]
                 status = p_min.status(e.horimetro_atual, default_alert=default_alert)
@@ -75,25 +83,31 @@ def create_app():
 
             prev = summarize(planos_prev)
             lub = summarize(planos_lub)
-
             backlog = e.open_backlog_count()
 
-            # contadores globais (baseado na preventiva)
+            is_prev_alert = prev["status"] in ("VENCIDA", "PROXIMA")
+            is_backlog_alert = backlog > 0
+
+            if filtro == "alertas":
+                if not is_prev_alert:
+                    continue
+            elif filtro == "alertas_e_backlog":
+                if not (is_prev_alert or is_backlog_alert):
+                    continue
+            elif filtro == "all":
+                pass
+            else:
+                if not is_prev_alert:
+                    continue
+
             if prev["status"] == "VENCIDA":
                 total_vencidas += 1
             elif prev["status"] == "PROXIMA":
                 total_proximas += 1
-            elif prev["status"] in ("EM_DIA", "SEM_PLANO"):
+            else:
                 total_em_dia += 1
 
-            cards.append(
-                {
-                    "equip": e,
-                    "prev": prev,
-                    "lub": lub,
-                    "backlog": backlog,
-                }
-            )
+            cards.append({"equip": e, "prev": prev, "lub": lub, "backlog": backlog})
 
         return render_template(
             "dashboard.html",
@@ -101,10 +115,93 @@ def create_app():
             total_vencidas=total_vencidas,
             total_proximas=total_proximas,
             total_em_dia=total_em_dia,
+            filtro=filtro,
         )
 
     # -------------------------
-    # Equipamentos
+    # ✅ ROTA QUE ESTAVA FALTANDO (corrige o BuildError no dashboard)
+    # -------------------------
+    @app.route("/equipamentos/<int:equip_id>/horimetro", methods=["POST"])
+    def equipamento_atualizar_horimetro(equip_id):
+        item = Equipment.query.get_or_404(equip_id)
+
+        novo_h = parse_int(request.form.get("horimetro_atual"), item.horimetro_atual)
+
+        if novo_h < item.horimetro_atual:
+            flash(f"Horímetro não pode diminuir. Atual: {item.horimetro_atual}h.", "danger")
+            return redirect(url_for("dashboard", filtro=request.args.get("filtro", "alertas")))
+
+        item.horimetro_atual = novo_h
+
+        # registra log com data de hoje
+        log = HorimeterLog(equipamento_id=item.id, data_registro=date.today(), horimetro=novo_h)
+        db.session.add(log)
+
+        db.session.commit()
+        flash(f"Horímetro atualizado para {novo_h}h em {item.nome}.", "success")
+        return redirect(url_for("dashboard", filtro=request.args.get("filtro", "alertas")))
+
+    # -------------------------
+    # ✅ TELA EXCLUSIVA DE HORÍMETRO (lista e atualiza em massa)
+    # -------------------------
+    @app.route("/horimetros", methods=["GET", "POST"])
+    def horimetros():
+        equipamentos = (
+            Equipment.query.filter_by(ativo=True)
+            .order_by(Equipment.nome.asc())
+            .all()
+        )
+
+        if request.method == "POST":
+            data_str = (request.form.get("data_registro") or "").strip()
+            data_registro = parse_date(data_str) or date.today()
+
+            total_salvos = 0
+
+            for e in equipamentos:
+                field = f"novo_h_{e.id}"
+                raw = (request.form.get(field) or "").strip()
+                if not raw:
+                    continue
+
+                novo_h = parse_int(raw, None)
+                if novo_h is None:
+                    continue
+
+                if novo_h < e.horimetro_atual:
+                    flash(f"{e.codigo}: horímetro não pode diminuir (atual {e.horimetro_atual}h).", "danger")
+                    continue
+
+                e.horimetro_atual = novo_h
+                db.session.add(HorimeterLog(equipamento_id=e.id, data_registro=data_registro, horimetro=novo_h))
+                total_salvos += 1
+
+            if total_salvos > 0:
+                db.session.commit()
+                flash(f"✅ {total_salvos} horímetro(s) atualizado(s) com sucesso!", "success")
+            else:
+                flash("Nenhum horímetro foi atualizado (preencha os campos que deseja alterar).", "warning")
+
+            return redirect(url_for("horimetros"))
+
+        hoje = date.today()
+        rows = []
+
+        for e in equipamentos:
+            last = (
+                HorimeterLog.query.filter_by(equipamento_id=e.id)
+                .order_by(HorimeterLog.data_registro.desc(), HorimeterLog.id.desc())
+                .first()
+            )
+            last_date = last.data_registro if last else None
+            dias = (hoje - last_date).days if last_date else 9999
+
+            rows.append({"equip": e, "last_date": last_date, "dias": dias})
+
+        return render_template("horimetros.html", rows=rows, hoje=hoje)
+
+    # -------------------------
+    # Equipamentos (CRUD)
     # -------------------------
     @app.route("/equipamentos")
     def equipamentos():
@@ -153,7 +250,7 @@ def create_app():
         return render_template("equipamento_form.html", item=item)
 
     # -------------------------
-    # Planos (Preventiva / Lubrificação)
+    # Planos (CRUD)
     # -------------------------
     @app.route("/planos")
     def planos():
@@ -163,13 +260,15 @@ def create_app():
     @app.route("/planos/novo", methods=["GET", "POST"])
     def plano_novo():
         equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+
         if request.method == "POST":
             equipamento_id = parse_int(request.form.get("equipamento_id"))
             tipo = (request.form.get("tipo") or "").strip()
             descricao = (request.form.get("descricao") or "").strip()
             intervalo_horas = parse_int(request.form.get("intervalo_horas"), 0)
-            alerta_horas = request.form.get("alerta_horas")
-            alerta_horas = parse_int(alerta_horas) if alerta_horas else None
+
+            alerta_raw = (request.form.get("alerta_horas") or "").strip()
+            alerta_horas = parse_int(alerta_raw, None) if alerta_raw else None
 
             ultima_h = parse_int(request.form.get("ultima_execucao_horimetro"), 0)
             ultima_d = parse_date(request.form.get("ultima_execucao_data"))
@@ -205,16 +304,20 @@ def create_app():
 
         if request.method == "POST":
             item.equipamento_id = parse_int(request.form.get("equipamento_id"), item.equipamento_id)
+
             tipo = (request.form.get("tipo") or "").strip()
-            item.tipo = tipo if tipo in (PlanType.PREVENTIVA.value, PlanType.LUBRIFICACAO.value) else item.tipo
+            if tipo in (PlanType.PREVENTIVA.value, PlanType.LUBRIFICACAO.value):
+                item.tipo = tipo
+
             item.descricao = (request.form.get("descricao") or "").strip()
             item.intervalo_horas = parse_int(request.form.get("intervalo_horas"), item.intervalo_horas)
 
-            alerta_horas = request.form.get("alerta_horas")
-            item.alerta_horas = parse_int(alerta_horas) if alerta_horas else None
+            alerta_raw = (request.form.get("alerta_horas") or "").strip()
+            item.alerta_horas = parse_int(alerta_raw, None) if alerta_raw else None
 
             item.ultima_execucao_horimetro = parse_int(
-                request.form.get("ultima_execucao_horimetro"), item.ultima_execucao_horimetro
+                request.form.get("ultima_execucao_horimetro"),
+                item.ultima_execucao_horimetro,
             )
             item.ultima_execucao_data = parse_date(request.form.get("ultima_execucao_data")) or item.ultima_execucao_data
 
@@ -233,7 +336,6 @@ def create_app():
         data_exec = parse_date(request.form.get("data_execucao")) or date.today()
         obs = (request.form.get("observacoes") or "").strip()
 
-        # grava execução
         ex = MaintenanceExecution(
             plano_id=p.id,
             equipamento_id=e.id,
@@ -243,35 +345,35 @@ def create_app():
         )
         db.session.add(ex)
 
-        # atualiza último ciclo
         p.ultima_execucao_horimetro = horimetro_exec
         p.ultima_execucao_data = data_exec
 
-        # opcional: se execução ocorreu acima do horímetro atual, sincroniza horímetro
         if horimetro_exec > e.horimetro_atual:
             e.horimetro_atual = horimetro_exec
 
+            # log também quando sincroniza
+            db.session.add(HorimeterLog(equipamento_id=e.id, data_registro=data_exec, horimetro=horimetro_exec))
+
         db.session.commit()
         flash("Execução registrada!", "success")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("planos"))
 
     # -------------------------
-    # Ordens de Serviço (Backlog)
+    # OS / Backlog
     # -------------------------
     @app.route("/os")
     def os_list():
         status = request.args.get("status")
         q = WorkOrder.query
-
         if status:
             q = q.filter_by(status=status)
-
         items = q.order_by(WorkOrder.opened_at.desc()).all()
         return render_template("os_list.html", items=items, status=status, all_statuses=[s.value for s in OsStatus])
 
     @app.route("/os/nova", methods=["GET", "POST"])
     def os_nova():
         equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+        all_statuses = [s.value for s in OsStatus]
 
         if request.method == "POST":
             equipamento_id = parse_int(request.form.get("equipamento_id"))
@@ -282,27 +384,27 @@ def create_app():
 
             if not equipamento_id or not titulo:
                 flash("Equipamento e título são obrigatórios.", "danger")
-                return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=[s.value for s in OsStatus])
+                return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=all_statuses)
 
             o = WorkOrder(
                 equipamento_id=equipamento_id,
                 titulo=titulo,
                 descricao=descricao or None,
                 prioridade=prioridade,
-                status=status if status in [s.value for s in OsStatus] else OsStatus.ABERTA.value,
+                status=status if status in all_statuses else OsStatus.ABERTA.value,
             )
             db.session.add(o)
             db.session.commit()
             flash("OS criada!", "success")
             return redirect(url_for("os_list"))
 
-        return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=[s.value for s in OsStatus])
+        return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=all_statuses)
 
     @app.route("/os/<int:os_id>/editar", methods=["GET", "POST"])
     def os_editar(os_id):
         item = WorkOrder.query.get_or_404(os_id)
         equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
-        all_status = [s.value for s in OsStatus]
+        all_statuses = [s.value for s in OsStatus]
 
         if request.method == "POST":
             item.equipamento_id = parse_int(request.form.get("equipamento_id"), item.equipamento_id)
@@ -311,7 +413,7 @@ def create_app():
             item.prioridade = (request.form.get("prioridade") or "MEDIA").strip()
 
             new_status = (request.form.get("status") or item.status).strip()
-            if new_status in all_status and new_status != item.status:
+            if new_status in all_statuses and new_status != item.status:
                 item.status = new_status
                 if new_status in (OsStatus.CONCLUIDA.value, OsStatus.CANCELADA.value):
                     item.closed_at = datetime.utcnow()
@@ -322,7 +424,7 @@ def create_app():
             flash("OS atualizada!", "success")
             return redirect(url_for("os_list"))
 
-        return render_template("os_form.html", item=item, equipamentos=equipamentos, all_statuses=all_status)
+        return render_template("os_form.html", item=item, equipamentos=equipamentos, all_statuses=all_statuses)
 
     # -------------------------
     # Histórico
@@ -330,8 +432,12 @@ def create_app():
     @app.route("/historico")
     def historico():
         execs = MaintenanceExecution.query.order_by(MaintenanceExecution.created_at.desc()).limit(200).all()
-        oss = WorkOrder.query.filter(WorkOrder.status.in_([OsStatus.CONCLUIDA.value, OsStatus.CANCELADA.value])) \
-            .order_by(WorkOrder.closed_at.desc()).limit(200).all()
+        oss = (
+            WorkOrder.query.filter(WorkOrder.status.in_([OsStatus.CONCLUIDA.value, OsStatus.CANCELADA.value]))
+            .order_by(WorkOrder.closed_at.desc())
+            .limit(200)
+            .all()
+        )
         return render_template("historico.html", execs=execs, oss=oss)
 
     return app

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h2 class="mb-1 fw-bold">Atualização de Horímetro</h2>
+    <div class="text-muted small">
+      Preencha somente os equipamentos que deseja atualizar. Linhas em vermelho = mais de 3 dias sem atualização.
+    </div>
+  </div>
+</div>
+
+<form method="post" class="card card-min p-3 mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4">
+      <label class="form-label mb-1">Data do lançamento</label>
+      <input class="form-control" type="date" name="data_registro" value="{{ hoje }}">
+      <div class="text-muted small mt-1">Essa data será registrada como “última atualização”.</div>
+    </div>
+
+    <div class="col-12 col-md-8 d-flex justify-content-md-end">
+      <button class="btn btn-primary">
+        <i class="bi bi-save me-1"></i>Salvar atualizações
+      </button>
+    </div>
+  </div>
+
+  <hr class="my-3">
+
+  <div class="table-responsive">
+    <table class="table align-middle table-hover">
+      <thead>
+        <tr>
+          <th>TAG</th>
+          <th>Equipamento</th>
+          <th>Última atualização</th>
+          <th>Horímetro atual</th>
+          <th>Novo horímetro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          {% set atrasado = (r.last_date is none) or (r.dias > 3) %}
+          <tr class="{% if atrasado %}row-alert{% endif %}">
+            <td class="fw-bold">{{ r.equip.codigo }}</td>
+            <td>{{ r.equip.nome }}</td>
+
+            <td>
+              {% if r.last_date %}
+                {{ r.last_date }} <span class="text-muted small">({{ r.dias }} dia(s))</span>
+              {% else %}
+                <span class="text-muted">Sem registro</span>
+              {% endif %}
+            </td>
+
+            <td><span class="fw-semibold">{{ r.equip.horimetro_atual }}h</span></td>
+
+            <td style="max-width: 220px;">
+              <input
+                class="form-control form-control-sm"
+                type="number"
+                name="novo_h_{{ r.equip.id }}"
+                min="{{ r.equip.horimetro_atual }}"
+                placeholder="Ex.: {{ r.equip.horimetro_atual + 10 }}"
+              >
+              <div class="text-muted small mt-1">Deixe vazio para não alterar.</div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+{% endblock %}
