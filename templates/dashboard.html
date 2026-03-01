@@ -1,0 +1,33 @@
+cat > templates/dashboard.html << 'HTML'
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">Dashboard</h3>
+
+<div class="row g-3">
+  {% for c in cards %}
+  <div class="col-12 col-md-6 col-lg-3">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div style="font-size:40px">🚜</div>
+        <h5 class="fw-bold">{{ c.equip.nome }}</h5>
+        <div class="text-muted">COD: {{ c.equip.codigo }}</div>
+        <div class="mt-2"><b>Horímetro:</b> {{ c.equip.horimetro_atual }}h</div>
+
+        <hr>
+
+        <div><b>Preventiva:</b> {{ c.prev.status }} {% if c.prev.faltam is not none %} ({{ c.prev.texto }}){% endif %}</div>
+        <div><b>Lubrificação:</b> {{ c.lub.status }} {% if c.lub.faltam is not none %} ({{ c.lub.texto }}){% endif %}</div>
+        <div><b>Backlog:</b> {{ c.backlog }} pendência(s)</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mt-4">
+  <div class="col-md-4"><div class="p-3 bg-danger text-white rounded">Preventivas Vencidas: <b>{{ total_vencidas }}</b></div></div>
+  <div class="col-md-4"><div class="p-3 bg-warning text-dark rounded">Próximas Preventivas: <b>{{ total_proximas }}</b></div></div>
+  <div class="col-md-4"><div class="p-3 bg-success text-white rounded">Em Dia: <b>{{ total_em_dia }}</b></div></div>
+</div>
+{% endblock %}
+HTML

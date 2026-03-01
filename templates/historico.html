@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Histórico</h3>
+
+<div class="row g-3 mt-2">
+  <div class="col-12 col-lg-6">
+    <h5>Execuções (Preventiva/Lubrificação)</h5>
+    <table class="table table-sm table-striped">
+      <thead>
+        <tr><th>Data</th><th>Equipamento</th><th>Plano</th><th>Horímetro</th></tr>
+      </thead>
+      <tbody>
+        {% for ex in execs %}
+        <tr>
+          <td>{{ ex.data_execucao }}</td>
+          <td>{{ ex.plano.equipamento.nome }}</td>
+          <td>{{ ex.plano.tipo }} - {{ ex.plano.descricao }}</td>
+          <td>{{ ex.horimetro_execucao }}h</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <h5>OS concluídas/canceladas</h5>
+    <table class="table table-sm table-striped">
+      <thead>
+        <tr><th>Equipamento</th><th>Título</th><th>Status</th><th>Fechamento</th></tr>
+      </thead>
+      <tbody>
+        {% for o in oss %}
+        <tr>
+          <td>{{ o.equipamento.nome }}</td>
+          <td>{{ o.titulo }}</td>
+          <td>{{ o.status }}</td>
+          <td>{{ o.closed_at.strftime('%Y-%m-%d %H:%M') if o.closed_at else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

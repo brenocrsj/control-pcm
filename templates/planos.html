@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Planos (Preventiva / Lubrificação)</h3>
+  <a class="btn btn-primary" href="{{ url_for('plano_novo') }}">+ Novo Plano</a>
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Equipamento</th><th>Tipo</th><th>Descrição</th><th>Intervalo</th><th>Alerta</th><th>Última Execução</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in items %}
+    <tr>
+      <td>{{ p.equipamento.nome }} ({{ p.equipamento.codigo }})</td>
+      <td>{{ p.tipo }}</td>
+      <td>{{ p.descricao }}</td>
+      <td>{{ p.intervalo_horas }}h</td>
+      <td>{{ p.alerta_horas if p.alerta_horas is not none else '-' }}h</td>
+      <td>{{ p.ultima_execucao_horimetro }}h {{ '(' ~ p.ultima_execucao_data ~ ')' if p.ultima_execucao_data else '' }}</td>
+      <td class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('plano_editar', plano_id=p.id) }}">Editar</a>
+
+        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#execModal{{p.id}}">
+          Executar
+        </button>
+
+        <!-- Modal executar -->
+        <div class="modal fade" id="execModal{{p.id}}" tabindex="-1">
+          <div class="modal-dialog">
+            <form class="modal-content" method="post" action="{{ url_for('plano_executar', plano_id=p.id) }}">
+              <div class="modal-header">
+                <h5 class="modal-title">Executar Plano</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-2"><b>{{ p.equipamento.nome }}</b> — {{ p.tipo }} / {{ p.descricao }}</div>
+
+                <label class="form-label">Horímetro da execução</label>
+                <input class="form-control" type="number" name="horimetro_execucao" value="{{ p.equipamento.horimetro_atual }}" required>
+
+                <label class="form-label mt-2">Data</label>
+                <input class="form-control" type="date" name="data_execucao">
+
+                <label class="form-label mt-2">Observações</label>
+                <textarea class="form-control" name="observacoes" rows="3"></textarea>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-success" type="submit">Salvar Execução</button>
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

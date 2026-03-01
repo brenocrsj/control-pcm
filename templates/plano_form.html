@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>{{ 'Editar' if item else 'Novo' }} Plano</h3>
+
+<form method="post" class="mt-3">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Equipamento</label>
+      <select class="form-select" name="equipamento_id" required>
+        <option value="">Selecione</option>
+        {% for e in equipamentos %}
+          <option value="{{ e.id }}" {% if item and item.equipamento_id == e.id %}selected{% endif %}>
+            {{ e.nome }} ({{ e.codigo }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Tipo</label>
+      <select class="form-select" name="tipo" required>
+        <option value="PREVENTIVA" {% if item and item.tipo=='PREVENTIVA' %}selected{% endif %}>PREVENTIVA</option>
+        <option value="LUBRIFICACAO" {% if item and item.tipo=='LUBRIFICACAO' %}selected{% endif %}>LUBRIFICAÇÃO</option>
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Intervalo (horas)</label>
+      <input class="form-control" type="number" name="intervalo_horas" value="{{ item.intervalo_horas if item else 0 }}" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Descrição</label>
+      <input class="form-control" name="descricao" value="{{ item.descricao if item else '' }}" required>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Alerta (horas)</label>
+      <input class="form-control" type="number" name="alerta_horas" value="{{ item.alerta_horas if item and item.alerta_horas is not none else '' }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Última execução (horímetro)</label>
+      <input class="form-control" type="number" name="ultima_execucao_horimetro" value="{{ item.ultima_execucao_horimetro if item else 0 }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Última execução (data)</label>
+      <input class="form-control" type="date" name="ultima_execucao_data" value="{{ item.ultima_execucao_data if item and item.ultima_execucao_data else '' }}">
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <button class="btn btn-success" type="submit">Salvar</button>
+    <a class="btn btn-secondary" href="{{ url_for('planos') }}">Voltar</a>
+  </div>
+</form>
+{% endblock %}

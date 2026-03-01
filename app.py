@@ -1,230 +1,344 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
-import sqlite3
-from datetime import datetime
-from flask_bcrypt import Bcrypt
-import pandas as pd
-from fpdf import FPDF
-from io import BytesIO
+import os
+from datetime import date, datetime
 
-app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta_aqui'
-bcrypt = Bcrypt(app)
+from flask import Flask, flash, redirect, render_template, request, url_for
+from flask_migrate import Migrate
 
-def get_db_connection():
-    """Conecta ao banco de dados SQLite e retorna a conexão."""
-    conn = sqlite3.connect('refeitorio.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+from config import Config
+from models import (
+    OPEN_OS_STATUSES,
+    OsStatus,
+    PlanType,
+    WorkOrder,
+    MaintenanceExecution,
+    MaintenancePlan,
+    Equipment,
+    db,
+)
 
-@app.route('/')
-def home():
-    """Página inicial focada no registro de acesso de colaboradores."""
-    return render_template('acesso.html')
 
-@app.route('/acesso_refeitorio', methods=['POST'])
-def acesso_refeitorio():
-    """Processa o registro de acesso de um colaborador (sem login)."""
-    matricula = request.form['matricula']
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT nome FROM colaboradores WHERE matricula = ?", (matricula,))
-        colaborador = cursor.fetchone()
-        
-        if colaborador:
-            data_hora_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("INSERT INTO registros (matricula, data_hora) VALUES (?, ?)",
-                           (matricula, data_hora_atual))
-            conn.commit()
-            return jsonify({'status': 'success', 'nome': colaborador['nome']})
-        else:
-            return jsonify({'status': 'error', 'message': 'Matrícula não encontrada.'})
-            
-    except sqlite3.Error as e:
-        return jsonify({'status': 'error', 'message': f"Ocorreu um erro: {e}"})
-    finally:
-        conn.close()
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-@app.route('/login_admin', methods=['POST'])
-def login_admin():
-    """Verifica a senha e inicia a sessão do administrador."""
-    senha = request.form['senha']
-    
-    if senha == '123456':
-        session['admin_logged_in'] = True
-        return redirect(url_for('admin_cadastro'))
-    else:
-        flash('Senha incorreta. Tente novamente.', 'danger')
-        return redirect(url_for('home'))
+    db.init_app(app)
+    Migrate(app, db)
 
-@app.route('/logout')
-def logout():
-    """Finaliza a sessão do administrador."""
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('home'))
+    # -------------------------
+    # Helpers
+    # -------------------------
+    def parse_int(v, default=0):
+        try:
+            return int(v)
+        except Exception:
+            return default
 
-def verificar_login_admin():
-    """Função de ajuda para proteger rotas do administrador."""
-    if 'admin_logged_in' not in session:
-        flash('Acesso negado. Por favor, faça login.', 'warning')
-        return redirect(url_for('home'))
-    return None
+    def parse_date(v):
+        if not v:
+            return None
+        try:
+            return datetime.strptime(v, "%Y-%m-%d").date()
+        except Exception:
+            return None
 
-@app.route('/admin')
-def admin_cadastro():
-    protecao = verificar_login_admin()
-    if protecao:
-        return protecao
-    return render_template('admin_cadastro.html')
+    # -------------------------
+    # Dashboard
+    # -------------------------
+    @app.route("/")
+    def dashboard():
+        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
 
-@app.route('/cadastrar', methods=['POST'])
-def cadastrar_colaborador():
-    protecao = verificar_login_admin()
-    if protecao:
-        return protecao
-        
-    matricula = request.form['matricula']
-    nome = request.form['nome']
-    funcao = request.form['funcao']
-    area = request.form['area']
+        default_alert = app.config.get("DEFAULT_ALERT_HOURS", 20)
 
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO colaboradores (matricula, nome, funcao, area) VALUES (?, ?, ?, ?)",
-                       (matricula, nome, funcao, area))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        flash(f'Erro: A matrícula "{matricula}" já está cadastrada.', 'danger')
-    finally:
-        conn.close()
-    
-    return redirect(url_for('admin_cadastro'))
+        cards = []
+        total_vencidas = 0
+        total_proximas = 0
+        total_em_dia = 0
 
-@app.route('/relatorio')
-def relatorio_completo():
-    protecao = verificar_login_admin()
-    if protecao:
-        return protecao
-        
-    conn = get_db_connection()
-    
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    
-    query = '''
-        SELECT 
-            registros.data_hora, 
-            registros.matricula, 
-            colaboradores.nome, 
-            colaboradores.funcao, 
-            colaboradores.area 
-        FROM registros 
-        JOIN colaboradores ON registros.matricula = colaboradores.matricula 
-    '''
-    
-    params = []
-    
-    # Adiciona a cláusula WHERE apenas se pelo menos uma data for fornecida
-    if data_inicio or data_fim:
-        query += " WHERE "
-        if data_inicio and not data_fim:
-            query += " registros.data_hora >= ?"
-            params.append(data_inicio)
-        elif not data_inicio and data_fim:
-            query += " registros.data_hora <= ?"
-            params.append(data_fim)
-        elif data_inicio and data_fim:
-            query += " registros.data_hora BETWEEN ? AND ?"
-            params.append(data_inicio)
-            params.append(data_fim)
-    
-    query += " ORDER BY registros.data_hora DESC"
-    
-    registros = conn.execute(query, params).fetchall()
-    conn.close()
-    
-    return render_template('relatorio.html', registros=registros)
+        for e in equipamentos:
+            planos_prev = [p for p in e.planos if p.tipo == PlanType.PREVENTIVA.value]
+            planos_lub = [p for p in e.planos if p.tipo == PlanType.LUBRIFICACAO.value]
 
-@app.route('/exportar/excel')
-def exportar_excel():
-    """Exporta os dados do relatório para um arquivo Excel."""
-    protecao = verificar_login_admin()
-    if protecao:
-        return protecao
-        
-    conn = get_db_connection()
-    registros = conn.execute('''
-        SELECT 
-            registros.data_hora, 
-            registros.matricula, 
-            colaboradores.nome, 
-            colaboradores.funcao, 
-            colaboradores.area 
-        FROM registros 
-        JOIN colaboradores ON registros.matricula = colaboradores.matricula 
-        ORDER BY registros.data_hora DESC
-    ''').fetchall()
-    conn.close()
+            def summarize(plans):
+                if not plans:
+                    return {"status": "SEM_PLANO", "faltam": None, "texto": "Sem plano"}
+                # pega o mais crítico (menor faltam)
+                remaining_list = [(p, p.remaining_hours(e.horimetro_atual)) for p in plans]
+                p_min, faltam_min = sorted(remaining_list, key=lambda x: x[1])[0]
+                status = p_min.status(e.horimetro_atual, default_alert=default_alert)
 
-    df = pd.DataFrame(registros, columns=['Data e Hora', 'Matrícula', 'Nome', 'Função', 'Área'])
-    
-    output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name='Relatório')
-    writer.close()
-    output.seek(0)
+                if status == "VENCIDA":
+                    return {"status": "VENCIDA", "faltam": faltam_min, "texto": "Vencida!"}
+                if status == "PROXIMA":
+                    return {"status": "PROXIMA", "faltam": faltam_min, "texto": f"{faltam_min} horas"}
+                return {"status": "EM_DIA", "faltam": faltam_min, "texto": f"{faltam_min} horas"}
 
-    return Response(output.getvalue(), 
-                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    headers={'Content-Disposition': 'attachment;filename=relatorio_refeitorio.xlsx'})
+            prev = summarize(planos_prev)
+            lub = summarize(planos_lub)
 
-@app.route('/exportar/pdf')
-def exportar_pdf():
-    """Exporta os dados do relatório para um arquivo PDF."""
-    protecao = verificar_login_admin()
-    if protecao:
-        return protecao
-        
-    conn = get_db_connection()
-    registros = conn.execute('''
-        SELECT 
-            registros.data_hora, 
-            registros.matricula, 
-            colaboradores.nome, 
-            colaboradores.funcao, 
-            colaboradores.area 
-        FROM registros 
-        JOIN colaboradores ON registros.matricula = colaboradores.matricula 
-        ORDER BY registros.data_hora DESC
-    ''').fetchall()
-    conn.close()
+            backlog = e.open_backlog_count()
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size = 12)
+            # contadores globais (baseado na preventiva)
+            if prev["status"] == "VENCIDA":
+                total_vencidas += 1
+            elif prev["status"] == "PROXIMA":
+                total_proximas += 1
+            elif prev["status"] in ("EM_DIA", "SEM_PLANO"):
+                total_em_dia += 1
 
-    pdf.cell(200, 10, txt="Relatório de Acessos ao Refeitório", ln=True, align='C')
-    pdf.ln(10)
+            cards.append(
+                {
+                    "equip": e,
+                    "prev": prev,
+                    "lub": lub,
+                    "backlog": backlog,
+                }
+            )
 
-    pdf.set_font("Arial", size = 10, style='B')
-    headers = ['Data e Hora', 'Matrícula', 'Nome', 'Função', 'Área']
-    col_widths = [40, 25, 40, 30, 30]
-    for i, header in enumerate(headers):
-        pdf.cell(col_widths[i], 10, header, border=1)
-    pdf.ln()
+        return render_template(
+            "dashboard.html",
+            cards=cards,
+            total_vencidas=total_vencidas,
+            total_proximas=total_proximas,
+            total_em_dia=total_em_dia,
+        )
 
-    pdf.set_font("Arial", size = 10)
-    for row in registros:
-        pdf.cell(col_widths[0], 10, str(row['data_hora']), border=1)
-        pdf.cell(col_widths[1], 10, str(row['matricula']), border=1)
-        pdf.cell(col_widths[2], 10, str(row['nome']), border=1)
-        pdf.cell(col_widths[3], 10, str(row['funcao']), border=1)
-        pdf.cell(col_widths[4], 10, str(row['area']), border=1)
-        pdf.ln()
+    # -------------------------
+    # Equipamentos
+    # -------------------------
+    @app.route("/equipamentos")
+    def equipamentos():
+        items = Equipment.query.order_by(Equipment.ativo.desc(), Equipment.nome.asc()).all()
+        return render_template("equipamentos.html", items=items)
 
-    return Response(pdf.output(dest='S').encode('latin-1'), mimetype='application/pdf',
-                    headers={'Content-Disposition': 'attachment;filename=relatorio_refeitorio.pdf'})
-                    
-if __name__ == '__main__':
-    app.run(debug=True)
+    @app.route("/equipamentos/novo", methods=["GET", "POST"])
+    def equipamento_novo():
+        if request.method == "POST":
+            nome = (request.form.get("nome") or "").strip()
+            codigo = (request.form.get("codigo") or "").strip()
+            tipo = (request.form.get("tipo") or "").strip()
+            horimetro = parse_int(request.form.get("horimetro_atual"), 0)
+
+            if not nome or not codigo:
+                flash("Nome e Código são obrigatórios.", "danger")
+                return render_template("equipamento_form.html", item=None)
+
+            if Equipment.query.filter_by(codigo=codigo).first():
+                flash("Já existe um equipamento com esse código.", "danger")
+                return render_template("equipamento_form.html", item=None)
+
+            e = Equipment(nome=nome, codigo=codigo, tipo=tipo, horimetro_atual=horimetro, ativo=True)
+            db.session.add(e)
+            db.session.commit()
+            flash("Equipamento criado!", "success")
+            return redirect(url_for("equipamentos"))
+
+        return render_template("equipamento_form.html", item=None)
+
+    @app.route("/equipamentos/<int:equip_id>/editar", methods=["GET", "POST"])
+    def equipamento_editar(equip_id):
+        item = Equipment.query.get_or_404(equip_id)
+
+        if request.method == "POST":
+            item.nome = (request.form.get("nome") or "").strip()
+            item.codigo = (request.form.get("codigo") or "").strip()
+            item.tipo = (request.form.get("tipo") or "").strip()
+            item.horimetro_atual = parse_int(request.form.get("horimetro_atual"), item.horimetro_atual)
+            item.ativo = (request.form.get("ativo") == "on")
+
+            db.session.commit()
+            flash("Equipamento atualizado!", "success")
+            return redirect(url_for("equipamentos"))
+
+        return render_template("equipamento_form.html", item=item)
+
+    # -------------------------
+    # Planos (Preventiva / Lubrificação)
+    # -------------------------
+    @app.route("/planos")
+    def planos():
+        items = MaintenancePlan.query.order_by(MaintenancePlan.tipo.asc(), MaintenancePlan.id.desc()).all()
+        return render_template("planos.html", items=items)
+
+    @app.route("/planos/novo", methods=["GET", "POST"])
+    def plano_novo():
+        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+        if request.method == "POST":
+            equipamento_id = parse_int(request.form.get("equipamento_id"))
+            tipo = (request.form.get("tipo") or "").strip()
+            descricao = (request.form.get("descricao") or "").strip()
+            intervalo_horas = parse_int(request.form.get("intervalo_horas"), 0)
+            alerta_horas = request.form.get("alerta_horas")
+            alerta_horas = parse_int(alerta_horas) if alerta_horas else None
+
+            ultima_h = parse_int(request.form.get("ultima_execucao_horimetro"), 0)
+            ultima_d = parse_date(request.form.get("ultima_execucao_data"))
+
+            if not equipamento_id or tipo not in (PlanType.PREVENTIVA.value, PlanType.LUBRIFICACAO.value):
+                flash("Selecione equipamento e tipo.", "danger")
+                return render_template("plano_form.html", item=None, equipamentos=equipamentos)
+
+            if not descricao or intervalo_horas <= 0:
+                flash("Descrição e intervalo (horas) são obrigatórios.", "danger")
+                return render_template("plano_form.html", item=None, equipamentos=equipamentos)
+
+            p = MaintenancePlan(
+                equipamento_id=equipamento_id,
+                tipo=tipo,
+                descricao=descricao,
+                intervalo_horas=intervalo_horas,
+                alerta_horas=alerta_horas,
+                ultima_execucao_horimetro=ultima_h,
+                ultima_execucao_data=ultima_d,
+            )
+            db.session.add(p)
+            db.session.commit()
+            flash("Plano criado!", "success")
+            return redirect(url_for("planos"))
+
+        return render_template("plano_form.html", item=None, equipamentos=equipamentos)
+
+    @app.route("/planos/<int:plano_id>/editar", methods=["GET", "POST"])
+    def plano_editar(plano_id):
+        item = MaintenancePlan.query.get_or_404(plano_id)
+        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+
+        if request.method == "POST":
+            item.equipamento_id = parse_int(request.form.get("equipamento_id"), item.equipamento_id)
+            tipo = (request.form.get("tipo") or "").strip()
+            item.tipo = tipo if tipo in (PlanType.PREVENTIVA.value, PlanType.LUBRIFICACAO.value) else item.tipo
+            item.descricao = (request.form.get("descricao") or "").strip()
+            item.intervalo_horas = parse_int(request.form.get("intervalo_horas"), item.intervalo_horas)
+
+            alerta_horas = request.form.get("alerta_horas")
+            item.alerta_horas = parse_int(alerta_horas) if alerta_horas else None
+
+            item.ultima_execucao_horimetro = parse_int(
+                request.form.get("ultima_execucao_horimetro"), item.ultima_execucao_horimetro
+            )
+            item.ultima_execucao_data = parse_date(request.form.get("ultima_execucao_data")) or item.ultima_execucao_data
+
+            db.session.commit()
+            flash("Plano atualizado!", "success")
+            return redirect(url_for("planos"))
+
+        return render_template("plano_form.html", item=item, equipamentos=equipamentos)
+
+    @app.route("/planos/<int:plano_id>/executar", methods=["POST"])
+    def plano_executar(plano_id):
+        p = MaintenancePlan.query.get_or_404(plano_id)
+        e = Equipment.query.get_or_404(p.equipamento_id)
+
+        horimetro_exec = parse_int(request.form.get("horimetro_execucao"), e.horimetro_atual)
+        data_exec = parse_date(request.form.get("data_execucao")) or date.today()
+        obs = (request.form.get("observacoes") or "").strip()
+
+        # grava execução
+        ex = MaintenanceExecution(
+            plano_id=p.id,
+            equipamento_id=e.id,
+            data_execucao=data_exec,
+            horimetro_execucao=horimetro_exec,
+            observacoes=obs or None,
+        )
+        db.session.add(ex)
+
+        # atualiza último ciclo
+        p.ultima_execucao_horimetro = horimetro_exec
+        p.ultima_execucao_data = data_exec
+
+        # opcional: se execução ocorreu acima do horímetro atual, sincroniza horímetro
+        if horimetro_exec > e.horimetro_atual:
+            e.horimetro_atual = horimetro_exec
+
+        db.session.commit()
+        flash("Execução registrada!", "success")
+        return redirect(url_for("dashboard"))
+
+    # -------------------------
+    # Ordens de Serviço (Backlog)
+    # -------------------------
+    @app.route("/os")
+    def os_list():
+        status = request.args.get("status")
+        q = WorkOrder.query
+
+        if status:
+            q = q.filter_by(status=status)
+
+        items = q.order_by(WorkOrder.opened_at.desc()).all()
+        return render_template("os_list.html", items=items, status=status, all_statuses=[s.value for s in OsStatus])
+
+    @app.route("/os/nova", methods=["GET", "POST"])
+    def os_nova():
+        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+
+        if request.method == "POST":
+            equipamento_id = parse_int(request.form.get("equipamento_id"))
+            titulo = (request.form.get("titulo") or "").strip()
+            descricao = (request.form.get("descricao") or "").strip()
+            prioridade = (request.form.get("prioridade") or "MEDIA").strip()
+            status = (request.form.get("status") or OsStatus.ABERTA.value).strip()
+
+            if not equipamento_id or not titulo:
+                flash("Equipamento e título são obrigatórios.", "danger")
+                return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=[s.value for s in OsStatus])
+
+            o = WorkOrder(
+                equipamento_id=equipamento_id,
+                titulo=titulo,
+                descricao=descricao or None,
+                prioridade=prioridade,
+                status=status if status in [s.value for s in OsStatus] else OsStatus.ABERTA.value,
+            )
+            db.session.add(o)
+            db.session.commit()
+            flash("OS criada!", "success")
+            return redirect(url_for("os_list"))
+
+        return render_template("os_form.html", item=None, equipamentos=equipamentos, all_statuses=[s.value for s in OsStatus])
+
+    @app.route("/os/<int:os_id>/editar", methods=["GET", "POST"])
+    def os_editar(os_id):
+        item = WorkOrder.query.get_or_404(os_id)
+        equipamentos = Equipment.query.filter_by(ativo=True).order_by(Equipment.nome.asc()).all()
+        all_status = [s.value for s in OsStatus]
+
+        if request.method == "POST":
+            item.equipamento_id = parse_int(request.form.get("equipamento_id"), item.equipamento_id)
+            item.titulo = (request.form.get("titulo") or "").strip()
+            item.descricao = (request.form.get("descricao") or "").strip() or None
+            item.prioridade = (request.form.get("prioridade") or "MEDIA").strip()
+
+            new_status = (request.form.get("status") or item.status).strip()
+            if new_status in all_status and new_status != item.status:
+                item.status = new_status
+                if new_status in (OsStatus.CONCLUIDA.value, OsStatus.CANCELADA.value):
+                    item.closed_at = datetime.utcnow()
+                else:
+                    item.closed_at = None
+
+            db.session.commit()
+            flash("OS atualizada!", "success")
+            return redirect(url_for("os_list"))
+
+        return render_template("os_form.html", item=item, equipamentos=equipamentos, all_statuses=all_status)
+
+    # -------------------------
+    # Histórico
+    # -------------------------
+    @app.route("/historico")
+    def historico():
+        execs = MaintenanceExecution.query.order_by(MaintenanceExecution.created_at.desc()).limit(200).all()
+        oss = WorkOrder.query.filter(WorkOrder.status.in_([OsStatus.CONCLUIDA.value, OsStatus.CANCELADA.value])) \
+            .order_by(WorkOrder.closed_at.desc()).limit(200).all()
+        return render_template("historico.html", execs=execs, oss=oss)
+
+    return app
+
+
+app = create_app()
+
+if __name__ == "__main__":
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug)

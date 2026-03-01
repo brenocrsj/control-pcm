@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Ordens de Serviço (Backlog)</h3>
+  <a class="btn btn-primary" href="{{ url_for('os_nova') }}">+ Nova OS</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4">
+    <select class="form-select" name="status">
+      <option value="">Todos</option>
+      {% for s in all_statuses %}
+        <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-outline-dark" type="submit">Filtrar</button>
+  </div>
+</form>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Equipamento</th><th>Título</th><th>Prioridade</th><th>Status</th><th>Abertura</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in items %}
+    <tr>
+      <td>{{ o.equipamento.nome }} ({{ o.equipamento.codigo }})</td>
+      <td>{{ o.titulo }}</td>
+      <td>{{ o.prioridade }}</td>
+      <td>{{ o.status }}</td>
+      <td>{{ o.opened_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('os_editar', os_id=o.id) }}">Editar</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

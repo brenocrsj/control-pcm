@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Cadastro de Equipamentos</h3>
+  <a class="btn btn-primary" href="{{ url_for('equipamento_novo') }}">+ Novo</a>
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Nome</th><th>Código</th><th>Tipo</th><th>Horímetro</th><th>Ativo</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in items %}
+    <tr>
+      <td>{{ e.nome }}</td>
+      <td>{{ e.codigo }}</td>
+      <td>{{ e.tipo or '-' }}</td>
+      <td>{{ e.horimetro_atual }}h</td>
+      <td>{{ 'Sim' if e.ativo else 'Não' }}</td>
+      <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('equipamento_editar', equip_id=e.id) }}">Editar</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
