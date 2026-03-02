@@ -1,177 +1,127 @@
 {% extends "base.html" %}
-{% block content %}
+{% block title %}Dashboard • PCM{% endblock %}
 
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-  <div>
-    <h2 class="mb-1 fw-bold">Dashboard</h2>
-    <div class="text-muted small">Acompanhe o que está vencido e o que está próximo do vencimento.</div>
-  </div>
+{% block body %}
+<section class="dash-wrap">
+  <div class="container">
 
-  <div class="d-flex gap-2 flex-wrap">
-    <a class="btn btn-sm {{ 'btn-dark' if filtro=='alertas' else 'btn-outline-dark' }}"
-       href="{{ url_for('dashboard', filtro='alertas') }}">
-      <i class="bi bi-exclamation-triangle me-1"></i>Só alertas
-    </a>
+    <div class="dash-header">
+      <div class="dash-left">
+        <div class="gear" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="white" stroke-width="2" opacity=".95"/>
+            <path d="M19.4 13a7.9 7.9 0 0 0 .1-2l2-1.2-2-3.5-2.3.6a8.2 8.2 0 0 0-1.7-1l-.3-2.3H10.8l-.3 2.3a8.2 8.2 0 0 0-1.7 1l-2.3-.6-2 3.5L6.6 11a7.9 7.9 0 0 0 .1 2l-2 1.2 2 3.5 2.3-.6c.5.4 1.1.8 1.7 1l.3 2.3h4.4l.3-2.3c.6-.2 1.2-.6 1.7-1l2.3.6 2-3.5-2-1.2z" stroke="white" stroke-width="1.7" opacity=".85" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="dash-title">
+          <strong>Dashboard de Manutenção</strong>
+          <span>Indicadores por caminhão • Preventivas • Lubrificação • Backlog</span>
+        </div>
+      </div>
 
-    <a class="btn btn-sm {{ 'btn-dark' if filtro=='alertas_e_backlog' else 'btn-outline-dark' }}"
-       href="{{ url_for('dashboard', filtro='alertas_e_backlog') }}">
-      <i class="bi bi-list-check me-1"></i>Alertas + backlog
-    </a>
-
-    <a class="btn btn-sm {{ 'btn-secondary' if filtro=='all' else 'btn-outline-secondary' }}"
-       href="{{ url_for('dashboard', filtro='all') }}">
-      <i class="bi bi-eye me-1"></i>Ver tudo
-    </a>
-  </div>
-</div>
-
-<!-- KPIs -->
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-3">
-    <div class="kpi kpi-danger">
-      <div class="kpi-icon"><i class="bi bi-x-octagon"></i></div>
-      <div>
-        <div class="kpi-label">Preventivas vencidas</div>
-        <div class="kpi-value">{{ total_vencidas }}</div>
+      <div class="dash-nav">
+        <a class="nav-item active" href="{{ url_for('main.dashboard') }}">Início</a>
+        <a class="nav-item" href="{{ url_for('main.os_list') }}">Ordens de Serviço</a>
+        <a class="nav-item" href="{{ url_for('main.horimetros') }}">Horímetro</a>
+        <a class="nav-item" href="{{ url_for('main.equipamentos') }}">Equipamentos</a>
       </div>
     </div>
-  </div>
 
-  <div class="col-12 col-md-3">
-    <div class="kpi kpi-warning">
-      <div class="kpi-icon"><i class="bi bi-exclamation-diamond"></i></div>
-      <div>
-        <div class="kpi-label">Preventivas próximas</div>
-        <div class="kpi-value">{{ total_proximas }}</div>
+    <!-- KPIs (use seus números reais) -->
+    <div class="kpis">
+      <div class="kpi">
+        <div class="ico" aria-hidden="true">🏗️</div>
+        <div class="meta">
+          <small>Ativos</small>
+          <strong>{{ total_ativos }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="ico" aria-hidden="true">⏱️</div>
+        <div class="meta">
+          <small>Preventivas vencidas</small>
+          <strong>{{ total_vencidas }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="ico" aria-hidden="true">📌</div>
+        <div class="meta">
+          <small>OS abertas</small>
+          <strong>{{ total_os_abertas }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="ico" aria-hidden="true">🧾</div>
+        <div class="meta">
+          <small>Backlogs pendentes</small>
+          <strong>{{ total_backlog }}</strong>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="col-12 col-md-3">
-    <div class="kpi kpi-success">
-      <div class="kpi-icon"><i class="bi bi-check2-circle"></i></div>
-      <div>
-        <div class="kpi-label">Em dia (exibidos)</div>
-        <div class="kpi-value">{{ total_em_dia }}</div>
-      </div>
-    </div>
-  </div>
+    <!-- Cards -->
+    <div class="grid">
+      {% for c in cards %}
+      {% set badge_class = 'good' %}
+      {% set badge_text = 'Preventiva OK' %}
 
-  <div class="col-12 col-md-3">
-    <div class="kpi kpi-neutral">
-      <div class="kpi-icon"><i class="bi bi-lightning-charge"></i></div>
-      <div>
-        <div class="kpi-label">Total exibido</div>
-        <div class="kpi-value">{{ cards|length }}</div>
-      </div>
-    </div>
-  </div>
-</div>
+      {% if c.prev.status == 'VENCIDA' %}
+        {% set badge_class = 'bad' %}
+        {% set badge_text = 'Preventiva Vencida' %}
+      {% elif c.prev.status == 'PROXIMA' %}
+        {% set badge_class = 'warn' %}
+        {% set badge_text = 'Atenção' %}
+      {% endif %}
 
-{% if cards|length == 0 %}
-  <div class="empty-min">
-    <div class="empty-icon">✅</div>
-    <h5 class="mb-1 fw-bold">Sem alertas no momento</h5>
-    <div class="text-muted">Tudo certo. Você pode clicar em “Ver tudo” para visualizar todos.</div>
-    <div class="mt-3">
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dashboard', filtro='all') }}">
-        <i class="bi bi-eye me-1"></i>Ver tudo
-      </a>
-    </div>
-  </div>
-{% endif %}
+      <div class="truck-card">
+        <div class="truck-illu" aria-hidden="true">
+          <svg viewBox="0 0 128 80" fill="none">
+            <path d="M12 48V28c0-6 5-11 11-11h44c6 0 11 5 11 11v20" fill="white" opacity=".96"/>
+            <path d="M78 32h18c5 0 9 3 11 8l5 14v10H78V32z" fill="white" opacity=".96"/>
+            <path d="M18 64h92v6H18z" fill="rgba(10,43,111,.18)"/>
+            <circle cx="34" cy="66" r="10" fill="rgba(10,43,111,.25)"/>
+            <circle cx="34" cy="66" r="6" fill="white"/>
+            <circle cx="92" cy="66" r="10" fill="rgba(10,43,111,.25)"/>
+            <circle cx="92" cy="66" r="6" fill="white"/>
+          </svg>
+        </div>
 
-<div class="row g-3">
-  {% for c in cards %}
-  <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-    <div class="card card-min h-100">
-      <div class="card-body">
-
-        <div class="d-flex justify-content-between align-items-start gap-2">
-          <div>
-            <div class="text-muted small">
-              TAG: <span class="fw-semibold">{{ c.equip.codigo }}</span>
-            </div>
-
-            <h5 class="fw-bold mb-1">{{ c.equip.nome }}</h5>
-
-            <div class="small text-muted">
-              <i class="bi bi-speedometer2 me-1"></i>
-              Horímetro: <span class="fw-semibold">{{ c.equip.horimetro_atual }}h</span>
-            </div>
-
-            <!-- ✅ Campo rápido para atualizar horímetro (sem quebrar por causa do filtro) -->
-            <form class="hori-form mt-2" method="post"
-                  action="{{ url_for('equipamento_atualizar_horimetro', equip_id=c.equip.id) }}?filtro={{ filtro }}">
-              <input class="form-control form-control-sm"
-                     type="number"
-                     name="horimetro_atual"
-                     value="{{ c.equip.horimetro_atual }}"
-                     min="{{ c.equip.horimetro_atual }}"
-                     required>
-              <button class="btn btn-sm btn-primary" type="submit">
-                Atualizar
-              </button>
-            </form>
-            <div class="text-muted mini-hint">Não permite reduzir o horímetro.</div>
+        <div class="truck-body">
+          <div class="truck-head">
+            <h3>{{ c.equip.nome }}</h3>
+            <span class="badge {{ badge_class }}">{{ badge_text }}</span>
           </div>
 
-          <div class="equip-ico">🚜</div>
+          <div class="stats">
+            <div class="stat"><span>TAG</span> <b>{{ c.equip.codigo }}</b></div>
+            <div class="stat"><span>Horímetro</span> <b>{{ c.equip.horimetro_atual }} h</b></div>
+            <div class="stat"><span>Lubrificação</span> <b>{{ 'Vencida' if c.lub.status=='VENCIDA' else ('Próxima' if c.lub.status=='PROXIMA' else 'OK') }}</b></div>
+            <div class="stat"><span>Backlog</span> <b>{{ c.backlog }}</b></div>
+          </div>
+
+          <div class="flags">
+            {% if c.prev.status == 'VENCIDA' %}
+              <span class="flag"><span class="mini-dot bad"></span> Preventiva vencida</span>
+            {% elif c.prev.status == 'PROXIMA' %}
+              <span class="flag"><span class="mini-dot warn"></span> Preventiva próxima</span>
+            {% else %}
+              <span class="flag"><span class="mini-dot good"></span> Preventiva em dia</span>
+            {% endif %}
+
+            {% if c.lub.status == 'VENCIDA' %}
+              <span class="flag"><span class="mini-dot warn"></span> Lubrificação pendente</span>
+            {% else %}
+              <span class="flag"><span class="mini-dot good"></span> Lubrificação OK</span>
+            {% endif %}
+          </div>
         </div>
-
-        <hr class="my-3">
-
-        <!-- Preventiva -->
-        <div class="status-line">
-          <div class="status-label">Preventiva</div>
-          {% if c.prev.status == "VENCIDA" %}
-            <span class="chip chip-danger"><i class="bi bi-x-circle me-1"></i>Vencida</span>
-          {% elif c.prev.status == "PROXIMA" %}
-            <span class="chip chip-warning"><i class="bi bi-exclamation-circle me-1"></i>{{ c.prev.texto }}</span>
-          {% elif c.prev.status == "EM_DIA" %}
-            <span class="chip chip-success"><i class="bi bi-check-circle me-1"></i>{{ c.prev.texto }}</span>
-          {% else %}
-            <span class="chip chip-neutral"><i class="bi bi-info-circle me-1"></i>Sem plano</span>
-          {% endif %}
-        </div>
-
-        <!-- Lubrificação -->
-        <div class="status-line">
-          <div class="status-label">Lubrificação</div>
-          {% if c.lub.status == "VENCIDA" %}
-            <span class="chip chip-danger"><i class="bi bi-x-circle me-1"></i>Vencida</span>
-          {% elif c.lub.status == "PROXIMA" %}
-            <span class="chip chip-warning"><i class="bi bi-exclamation-circle me-1"></i>{{ c.lub.texto }}</span>
-          {% elif c.lub.status == "EM_DIA" %}
-            <span class="chip chip-success"><i class="bi bi-check-circle me-1"></i>{{ c.lub.texto }}</span>
-          {% else %}
-            <span class="chip chip-neutral"><i class="bi bi-info-circle me-1"></i>Sem plano</span>
-          {% endif %}
-        </div>
-
-        <!-- Backlog -->
-        <div class="status-line">
-          <div class="status-label">Backlog</div>
-          {% if c.backlog == 0 %}
-            <span class="chip chip-success"><i class="bi bi-check2 me-1"></i>Sem pendências</span>
-          {% else %}
-            <span class="chip chip-neutral"><i class="bi bi-list-check me-1"></i>{{ c.backlog }} pendência(s)</span>
-          {% endif %}
-        </div>
-
-        <div class="mt-3 d-grid gap-2">
-          <a class="btn btn-sm btn-outline-dark" href="{{ url_for('equipamento_editar', equip_id=c.equip.id) }}">
-            <i class="bi bi-pencil-square me-1"></i>Editar completo
-          </a>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('os_nova') }}">
-            <i class="bi bi-plus-circle me-1"></i>Criar OS
-          </a>
-        </div>
-
       </div>
+      {% endfor %}
     </div>
-  </div>
-  {% endfor %}
-</div>
 
+  </div>
+</section>
 {% endblock %}

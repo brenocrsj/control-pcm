@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Entrar • PCM{% endblock %}
+
+{% block body %}
+<section class="login-wrap">
+  <div class="login-shell">
+
+    <div class="login-hero">
+      <div class="hero-head">
+        <div class="gear" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="white" stroke-width="2" opacity=".95"/>
+            <path d="M19.4 13a7.9 7.9 0 0 0 .1-2l2-1.2-2-3.5-2.3.6a8.2 8.2 0 0 0-1.7-1l-.3-2.3H10.8l-.3 2.3a8.2 8.2 0 0 0-1.7 1l-2.3-.6-2 3.5L6.6 11a7.9 7.9 0 0 0 .1 2l-2 1.2 2 3.5 2.3-.6c.5.4 1.1.8 1.7 1l.3 2.3h4.4l.3-2.3c.6-.2 1.2-.6 1.7-1l2.3.6 2-3.5-2-1.2z" stroke="white" stroke-width="1.7" opacity=".85" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="hero-title">
+          <div class="small">Sistema de Controle de</div>
+          <div class="big">Manutenção PCM</div>
+        </div>
+      </div>
+
+      <div class="hero-sub">
+        Acompanhe preventivas, horímetros, lubrificação e backlog por caminhão em um painel claro e operacional.
+        Interface moderna com foco em produtividade e decisão rápida.
+      </div>
+
+      <div class="hero-metrics">
+        <span class="chip"><span class="dot"></span> Preventivas</span>
+        <span class="chip"><span class="dot"></span> Lubrificação</span>
+        <span class="chip"><span class="dot"></span> Backlog</span>
+        <span class="chip"><span class="dot"></span> Ordens</span>
+      </div>
+    </div>
+
+    <div class="login-card">
+      <div>
+        <h2>Bem-vindo!</h2>
+        <p>Faça login para acessar o controle de manutenção, indicadores e status dos caminhões.</p>
+      </div>
+
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="field">
+          <div class="label">E-mail</div>
+          <div class="input">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6h16v12H4z" stroke="rgba(10,43,111,.7)" stroke-width="2"/>
+              <path d="M4 7l8 6 8-6" stroke="rgba(10,43,111,.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ form.email(placeholder="Digite seu e-mail", autocomplete="username") }}
+          </div>
+          {% if form.email.errors %}
+            <div class="form-error">{{ form.email.errors[0] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <div class="label">Senha</div>
+          <div class="input">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="rgba(10,43,111,.7)" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6 11h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z" stroke="rgba(10,43,111,.7)" stroke-width="2"/>
+              <path d="M12 15v3" stroke="rgba(10,43,111,.7)" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            {{ form.password(type="password", placeholder="Digite sua senha", autocomplete="current-password") }}
+          </div>
+          {% if form.password.errors %}
+            <div class="form-error">{{ form.password.errors[0] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="row">
+          <label class="check">
+            {{ form.remember_me() }}
+            Lembrar-me
+          </label>
+          <a class="link" href="{{ url_for('auth.register') }}">Criar conta</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+
+        <button class="btn btn-primary" type="submit" style="width:100%; margin-top: 10px;">
+          Entrar
+        </button>
+      </form>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

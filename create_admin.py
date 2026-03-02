@@ -5,7 +5,7 @@ from app.models import User
 app = create_app()
 
 with app.app_context():
-    email = "admin@pcm.local"
+    email = "admin@pcm.com"
     user = User.query.filter_by(email=email).first()
     if not user:
         user = User(name="Administrador", email=email, role="admin")

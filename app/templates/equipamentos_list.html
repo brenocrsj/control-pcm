@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Equipamentos</h3>
+
+  {% if current_user.is_admin() %}
+    <a class="btn btn-primary" href="{{ url_for('main.equipamento_novo') }}">
+      + Novo equipamento
+    </a>
+  {% endif %}
+</div>
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>TAG</th>
+      <th>Tipo</th>
+      <th>Horímetro</th>
+      <th>Status</th>
+      <th style="width: 220px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in items %}
+    <tr>
+      <td class="fw-semibold">{{ e.nome }}</td>
+      <td>{{ e.codigo }}</td>
+      <td>{{ e.tipo or '-' }}</td>
+      <td>{{ e.horimetro_atual }}h</td>
+      <td>
+        {% if e.ativo %}
+          <span class="badge text-bg-success">Ativo</span>
+        {% else %}
+          <span class="badge text-bg-secondary">Inativo</span>
+        {% endif %}
+      </td>
+      <td class="text-end">
+        <a class="btn btn-sm btn-outline-dark" href="{{ url_for('main.equipamento_editar', equip_id=e.id) }}">
+          Editar
+        </a>
+
+        {% if current_user.is_admin() %}
+          <form class="d-inline" method="post" action="{{ url_for('main.equipamento_toggle', equip_id=e.id) }}">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">
+              {% if e.ativo %}Desativar{% else %}Ativar{% endif %}
+            </button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
