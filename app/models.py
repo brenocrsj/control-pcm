@@ -1,16 +1,13 @@
 from __future__ import annotations
-
 from datetime import datetime, date
 import enum
 
-from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
-db = SQLAlchemy()
+from .extensions import db
 
 
-# -------------------------
-# Enums
-# -------------------------
 class PlanType(enum.Enum):
     PREVENTIVA = "PREVENTIVA"
     LUBRIFICACAO = "LUBRIFICACAO"
@@ -32,7 +29,33 @@ OPEN_OS_STATUSES = (
 
 
 # -------------------------
-# Models
+# Auth
+# -------------------------
+class User(UserMixin, db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(180), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    role = db.Column(db.String(20), nullable=False, default="user")  # user/admin
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def set_password(self, raw_password: str) -> None:
+        self.password_hash = generate_password_hash(raw_password)
+
+    def check_password(self, raw_password: str) -> bool:
+        return check_password_hash(self.password_hash, raw_password)
+
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+
+# -------------------------
+# Core models
 # -------------------------
 class Equipment(db.Model):
     __tablename__ = "equipamentos"
@@ -48,6 +71,7 @@ class Equipment(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def open_backlog_count(self) -> int:
+        from .models import WorkOrder  # evita circular
         return (
             WorkOrder.query.filter_by(equipamento_id=self.id)
             .filter(WorkOrder.status.in_(OPEN_OS_STATUSES))
@@ -61,7 +85,7 @@ class MaintenancePlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     equipamento_id = db.Column(db.Integer, db.ForeignKey("equipamentos.id"), nullable=False)
 
-    tipo = db.Column(db.String(30), nullable=False)  # PREVENTIVA / LUBRIFICACAO
+    tipo = db.Column(db.String(30), nullable=False)
     descricao = db.Column(db.String(200), nullable=False)
 
     intervalo_horas = db.Column(db.Integer, nullable=False)
@@ -75,16 +99,11 @@ class MaintenancePlan(db.Model):
     equipamento = db.relationship("Equipment", backref=db.backref("planos", lazy=True))
 
     def remaining_hours(self, horimetro_atual: int) -> int:
-        """Horas restantes para vencer (pode ficar negativo se já venceu)."""
         return (self.ultima_execucao_horimetro + self.intervalo_horas) - horimetro_atual
 
     def status(self, horimetro_atual: int, default_alert: int = 20) -> str:
-        """
-        Retorna: VENCIDA | PROXIMA | EM_DIA
-        """
         faltam = self.remaining_hours(horimetro_atual)
         alert = self.alerta_horas if self.alerta_horas is not None else default_alert
-
         if faltam <= 0:
             return "VENCIDA"
         if faltam <= alert:
@@ -101,7 +120,6 @@ class MaintenanceExecution(db.Model):
 
     data_execucao = db.Column(db.Date, nullable=False, default=date.today)
     horimetro_execucao = db.Column(db.Integer, nullable=False)
-
     observacoes = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -128,19 +146,13 @@ class WorkOrder(db.Model):
     equipamento = db.relationship("Equipment", backref=db.backref("os", lazy=True))
 
 
-# -------------------------
-# ✅ NOVO: Log de Horímetro (para data da última atualização)
-# -------------------------
 class HorimeterLog(db.Model):
     __tablename__ = "horimetro_log"
 
     id = db.Column(db.Integer, primary_key=True)
     equipamento_id = db.Column(db.Integer, db.ForeignKey("equipamentos.id"), nullable=False)
 
-    # data que você seleciona na tela /horimetros
     data_registro = db.Column(db.Date, nullable=False, default=date.today)
-
-    # horímetro lançado
     horimetro = db.Column(db.Integer, nullable=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

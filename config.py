@@ -1,9 +1,8 @@
 import os
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///manutencao.db")
+    SECRET_KEY = os.getenv("SECRET_KEY", "troque-esta-chave-para-producao")
+    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "sqlite:///manutencao.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Limiar padrão (se o plano não tiver alerta definido)
-    DEFAULT_ALERT_HOURS = 20
+    DEFAULT_ALERT_HOURS = int(os.getenv("DEFAULT_ALERT_HOURS", "20"))

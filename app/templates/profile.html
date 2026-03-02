@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Meu Perfil • PCM{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h3 class="fw-bold mb-1">Meu perfil</h3>
+    <div class="text-muted small">Somente você tem acesso a estas informações.</div>
+  </div>
+</div>
+
+<div class="card card-min">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3">
+      <div class="profile-avatar">{{ (u.name[:1] if u.name else 'U')|upper }}</div>
+      <div>
+        <div class="fw-bold">{{ u.name }}</div>
+        <div class="text-muted">{{ u.email }}</div>
+        <div class="small mt-1">
+          <span class="badge text-bg-light border">Role: {{ u.role }}</span>
+          {% if u.is_admin() %}
+            <span class="badge text-bg-dark">Admin</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="text-muted small">
+      Dica: se quiser, posso adicionar “Trocar senha” e “Editar perfil” com validações e confirmação por senha.
+    </div>
+  </div>
+</div>
+{% endblock %}

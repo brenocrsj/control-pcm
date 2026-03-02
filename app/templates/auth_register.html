@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Criar conta • PCM{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">PCM</div>
+      <h4 class="fw-bold mb-1">Criar conta</h4>
+      <div class="text-muted small">Crie seu acesso para usar o sistema com segurança.</div>
+    </div>
+
+    <form method="post" class="mt-3">
+      {{ form.hidden_tag() }}
+
+      <div class="mb-3">
+        <label class="form-label">Nome</label>
+        {{ form.name(class_="form-control", placeholder="Seu nome") }}
+        {% if form.name.errors %}
+          <div class="text-danger small mt-1">{{ form.name.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">E-mail</label>
+        {{ form.email(class_="form-control", placeholder="seuemail@exemplo.com") }}
+        {% if form.email.errors %}
+          <div class="text-danger small mt-1">{{ form.email.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Senha</label>
+        {{ form.password(class_="form-control", placeholder="mínimo 4 caracteres") }}
+        {% if form.password.errors %}
+          <div class="text-danger small mt-1">{{ form.password.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Confirmar senha</label>
+        {{ form.confirm(class_="form-control", placeholder="repita sua senha") }}
+        {% if form.confirm.errors %}
+          <div class="text-danger small mt-1">{{ form.confirm.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <button class="btn btn-dark w-100" type="submit">
+        <i class="bi bi-person-plus me-1"></i>Criar conta
+      </button>
+
+      <div class="auth-footer">
+        <span class="text-muted small">Já tem conta?</span>
+        <a href="{{ url_for('auth.login') }}" class="link-dark fw-semibold">Entrar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

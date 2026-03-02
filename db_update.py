@@ -1,8 +1,8 @@
 from app import create_app
-from models import db
+from app.extensions import db
 
 app = create_app()
 
 with app.app_context():
     db.create_all()
-    print("✅ Tabelas garantidas (incluindo horimetro_log).")
+    print("✅ Banco atualizado: tabelas criadas/garantidas.")
