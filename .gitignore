@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Flask / instance
+instance/
+*.db
+*.sqlite3
+
+# OS / editor
+.DS_Store
+.vscode/
