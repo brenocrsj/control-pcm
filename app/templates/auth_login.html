@@ -1,43 +1,61 @@
 {% extends "base.html" %}
-{% block title %}Login • PCM{% endblock %}
+{% block title %}Entrar • PCM{% endblock %}
 
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-header">
-      <div class="auth-logo">PCM</div>
-      <h4 class="fw-bold mb-1">Entrar</h4>
-      <div class="text-muted small">Acesse o sistema para visualizar e atualizar as informações.</div>
+<section class="login-bg">
+  <div class="login-card">
+    <div class="login-top">
+      <div class="logo-row">
+        <span class="gear">⚙️</span>
+        <span class="gear small">⚙️</span>
+        <div class="title">
+          <div class="t1">Sistema de Controle de</div>
+          <div class="t2">Manutenção PCM</div>
+        </div>
+      </div>
     </div>
 
-    <form method="post" class="mt-3">
-      {{ form.hidden_tag() }}
+    <div class="login-panel">
+      <h1>Bem-vindo!</h1>
 
-      <div class="mb-3">
-        <label class="form-label">E-mail</label>
-        {{ form.email(class_="form-control", placeholder="seuemail@exemplo.com") }}
-        {% if form.email.errors %}
-          <div class="text-danger small mt-1">{{ form.email.errors[0] }}</div>
-        {% endif %}
-      </div>
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
 
-      <div class="mb-3">
-        <label class="form-label">Senha</label>
-        {{ form.password(class_="form-control", placeholder="••••••••") }}
-        {% if form.password.errors %}
-          <div class="text-danger small mt-1">{{ form.password.errors[0] }}</div>
-        {% endif %}
-      </div>
+        <div class="field">
+          <span class="icon">👤</span>
+          {{ form.email(placeholder="Usuário", autocomplete="username") }}
+        </div>
+        {% if form.email.errors %}<div class="err">{{ form.email.errors[0] }}</div>{% endif %}
 
-      <button class="btn btn-dark w-100" type="submit">
-        <i class="bi bi-box-arrow-in-right me-1"></i>Entrar
-      </button>
+        <div class="field">
+          <span class="icon">🔒</span>
+          {{ form.password(type="password", placeholder="Senha", autocomplete="current-password") }}
+        </div>
+        {% if form.password.errors %}<div class="err">{{ form.password.errors[0] }}</div>{% endif %}
 
-      <div class="auth-footer">
-        <span class="text-muted small">Ainda não tem conta?</span>
-        <a href="{{ url_for('auth.register') }}" class="link-dark fw-semibold">Criar conta</a>
-      </div>
-    </form>
+        <button class="btn-login" type="submit">Entrar</button>
+
+        <div class="row">
+          <a class="link" href="javascript:void(0)">Esqueceu sua senha?</a>
+          <label class="remember">
+            {{ form.remember_me() }}
+            Lembrar-me
+          </label>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+      </form>
+    </div>
+
+    <div class="login-bottom">
+      <div class="bicon">⚙️</div>
+      <div class="bicon">✉️</div>
+      <div class="bicon">ℹ️</div>
+    </div>
   </div>
-</div>
+</section>
 {% endblock %}

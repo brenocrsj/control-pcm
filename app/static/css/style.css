@@ -1,0 +1,250 @@
+:root{
+  --bg:#dbe3ef;
+  --blue1:#0b57b3;
+  --blue2:#073a7a;
+  --blue3:#0a4aa0;
+
+  --shadow: 0 6px 12px rgba(0,0,0,.25);
+  --shadow2: 0 3px 8px rgba(0,0,0,.18);
+
+  --card:#ffffff;
+  --card2:#f3f7ff;
+  --text:#0b1a33;
+}
+
+/* reset */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color:var(--text);
+  background: var(--bg);
+}
+
+/* ===== TOP BAR (base.html) ===== */
+.topbar{
+  background: linear-gradient(180deg, var(--blue1), var(--blue2));
+  color:#fff;
+  box-shadow: var(--shadow);
+  border-bottom: 2px solid rgba(255,255,255,.18);
+}
+.brand-mini{
+  display:flex; align-items:center; gap:10px;
+  font-weight:900;
+  padding: 12px 16px;
+}
+.top-actions{
+  position:absolute;
+  right:16px;
+  top:10px;
+  display:flex;
+  gap:10px;
+}
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border-radius:6px;
+  font-weight:800;
+  text-decoration:none;
+  border:1px solid rgba(255,255,255,.18);
+}
+.btn-ghost{ background: rgba(255,255,255,.08); color:#eaf2ff; }
+.btn-primary{ background: rgba(255,255,255,.18); color:#fff; }
+
+/* ===== DASHBOARD ===== */
+.container{
+  width:min(1100px, 94vw);
+  margin: 12px auto 40px;
+}
+
+.dash-wrap{ padding: 12px 0 30px; }
+
+/* header azul interno (como no print) */
+.dash-header{
+  background: linear-gradient(180deg, var(--blue1), var(--blue2));
+  color:#fff;
+  border-radius:6px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.dash-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.gear{
+  width:38px;height:38px;
+  border-radius:8px;
+  background: rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18);
+  display:grid;
+  place-items:center;
+}
+.dash-title strong{ font-size:18px; font-weight:900; display:block; }
+.dash-title span{ font-size:12px; opacity:.9; font-weight:700; }
+
+.dash-nav{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  font-weight:900;
+  font-size:13px;
+}
+.nav-item{
+  color:#eaf2ff;
+  text-decoration:none;
+  padding:10px 10px;
+  border-bottom:3px solid transparent;
+}
+.nav-item.active{
+  border-bottom-color:#26d4ff;
+}
+
+/* tiles (kpis) */
+.kpis{
+  margin: 14px 0 16px;
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap:14px;
+}
+.kpi{
+  color:#fff;
+  border-radius:6px;
+  box-shadow: var(--shadow2);
+  padding:14px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border:1px solid rgba(255,255,255,.14);
+}
+.kpi:nth-child(1){ background: linear-gradient(180deg, #1f6bd8, #0d4ea9); }
+.kpi:nth-child(2){ background: linear-gradient(180deg, #ff4d2f, #d61f00); }
+.kpi:nth-child(3){ background: linear-gradient(180deg, #1b3e7a, #0d2651); }
+.kpi:nth-child(4){ background: linear-gradient(180deg, #ffb300, #ff7a00); }
+
+.kpi .ico{
+  width:42px; height:42px;
+  border-radius:8px;
+  display:grid; place-items:center;
+  background: rgba(255,255,255,.18);
+  font-size:20px;
+}
+.kpi .meta small{ display:block; font-weight:900; font-size:12px; opacity:.95 }
+.kpi .meta strong{ display:block; font-weight:900; font-size:22px }
+
+/* grid dos caminhões (2 colunas como no print) */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:14px;
+}
+
+/* card caminhão */
+.truck-card{
+  background: linear-gradient(180deg, #ffffff, #f2f7ff);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:6px;
+  box-shadow: var(--shadow2);
+  padding:12px;
+  display:grid;
+  grid-template-columns: 180px 1fr;
+  gap:12px;
+  min-height: 150px;
+}
+.truck-illu{
+  background:#fff;
+  border:1px solid rgba(0,0,0,.10);
+  border-radius:6px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+}
+.truck-illu svg{ width:175px; height:auto; }
+
+.truck-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.truck-head h3{
+  margin:0;
+  font-size:18px;
+  font-weight:900;
+  color:#0a4aa0;
+}
+
+/* badge preventiva */
+.badge{
+  font-size:12px;
+  font-weight:900;
+  padding:8px 10px;
+  border-radius:6px;
+  color:#fff;
+  white-space:nowrap;
+}
+.badge.good{ background:#1aa34a; }
+.badge.warn{ background:#ffb300; color:#2b1d00; }
+.badge.bad { background:#d61f00; }
+
+/* mini infos */
+.stats{
+  margin-top:8px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:8px;
+}
+.stat{
+  background: var(--card2);
+  border:1px solid rgba(0,0,0,.10);
+  border-radius:6px;
+  padding:10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-weight:900;
+  font-size:12px;
+  color:#17345f;
+}
+.stat b{ color:#0a4aa0; font-size:12px; }
+
+/* flags */
+.flags{
+  margin-top:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.flag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.10);
+  font-weight:900;
+  font-size:12px;
+  color:#0a4aa0;
+}
+.mini-dot{ width:10px;height:10px;border-radius:999px; }
+.mini-dot.good{ background:#1aa34a; box-shadow: 0 0 0 4px rgba(26,163,74,.15); }
+.mini-dot.warn{ background:#ffb300; box-shadow: 0 0 0 4px rgba(255,179,0,.15); }
+.mini-dot.bad { background:#d61f00; box-shadow: 0 0 0 4px rgba(214,31,0,.15); }
+
+/* responsivo */
+@media (max-width: 980px){
+  .kpis{ grid-template-columns: 1fr 1fr; }
+  .grid{ grid-template-columns: 1fr; }
+}
+@media (max-width: 520px){
+  .kpis{ grid-template-columns: 1fr; }
+  .truck-card{ grid-template-columns: 1fr; }
+}

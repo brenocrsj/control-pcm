@@ -1,127 +1,130 @@
 {% extends "base.html" %}
 {% block title %}Dashboard • PCM{% endblock %}
 
-{% block body %}
-<section class="dash-wrap">
-  <div class="container">
+{% block content %}
+<div class="wrap">
 
-    <div class="dash-header">
-      <div class="dash-left">
-        <div class="gear" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke="white" stroke-width="2" opacity=".95"/>
-            <path d="M19.4 13a7.9 7.9 0 0 0 .1-2l2-1.2-2-3.5-2.3.6a8.2 8.2 0 0 0-1.7-1l-.3-2.3H10.8l-.3 2.3a8.2 8.2 0 0 0-1.7 1l-2.3-.6-2 3.5L6.6 11a7.9 7.9 0 0 0 .1 2l-2 1.2 2 3.5 2.3-.6c.5.4 1.1.8 1.7 1l.3 2.3h4.4l.3-2.3c.6-.2 1.2-.6 1.7-1l2.3.6 2-3.5-2-1.2z" stroke="white" stroke-width="1.7" opacity=".85" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="dash-title">
-          <strong>Dashboard de Manutenção</strong>
-          <span>Indicadores por caminhão • Preventivas • Lubrificação • Backlog</span>
-        </div>
+  <!-- tiles -->
+  <div class="tiles">
+    <div class="tile blue">
+      <div>
+        <div class="label">Ativos:</div>
+        <div class="value">{{ total_ativos }}</div>
       </div>
-
-      <div class="dash-nav">
-        <a class="nav-item active" href="{{ url_for('main.dashboard') }}">Início</a>
-        <a class="nav-item" href="{{ url_for('main.os_list') }}">Ordens de Serviço</a>
-        <a class="nav-item" href="{{ url_for('main.horimetros') }}">Horímetro</a>
-        <a class="nav-item" href="{{ url_for('main.equipamentos') }}">Equipamentos</a>
-      </div>
+      <div class="ico">🧰</div>
     </div>
 
-    <!-- KPIs (use seus números reais) -->
-    <div class="kpis">
-      <div class="kpi">
-        <div class="ico" aria-hidden="true">🏗️</div>
-        <div class="meta">
-          <small>Ativos</small>
-          <strong>{{ total_ativos }}</strong>
-        </div>
+    <div class="tile red">
+      <div>
+        <div class="label">Preventivas Vencidas:</div>
+        <div class="value">{{ total_vencidas }}</div>
       </div>
-
-      <div class="kpi">
-        <div class="ico" aria-hidden="true">⏱️</div>
-        <div class="meta">
-          <small>Preventivas vencidas</small>
-          <strong>{{ total_vencidas }}</strong>
-        </div>
-      </div>
-
-      <div class="kpi">
-        <div class="ico" aria-hidden="true">📌</div>
-        <div class="meta">
-          <small>OS abertas</small>
-          <strong>{{ total_os_abertas }}</strong>
-        </div>
-      </div>
-
-      <div class="kpi">
-        <div class="ico" aria-hidden="true">🧾</div>
-        <div class="meta">
-          <small>Backlogs pendentes</small>
-          <strong>{{ total_backlog }}</strong>
-        </div>
-      </div>
+      <div class="ico">⏱️</div>
     </div>
 
-    <!-- Cards -->
-    <div class="grid">
-      {% for c in cards %}
+    <div class="tile navy">
+      <div>
+        <div class="label">Ordens Atrasadas:</div>
+        <div class="value">{{ total_os_abertas }}</div>
+      </div>
+      <div class="ico">📁</div>
+    </div>
+
+    <div class="tile orange">
+      <div>
+        <div class="label">Backlogs Pendentes:</div>
+        <div class="value">{{ total_backlog }}</div>
+      </div>
+      <div class="ico">🧾</div>
+    </div>
+  </div>
+
+  <!-- cards -->
+  <div class="cards">
+    {% for c in cards %}
+      {% set prev = c.prev.status %}
       {% set badge_class = 'good' %}
-      {% set badge_text = 'Preventiva OK' %}
+      {% set badge_text  = 'Preventiva OK' %}
 
-      {% if c.prev.status == 'VENCIDA' %}
+      {% if prev == 'VENCIDA' %}
         {% set badge_class = 'bad' %}
-        {% set badge_text = 'Preventiva Vencida' %}
-      {% elif c.prev.status == 'PROXIMA' %}
+        {% set badge_text  = 'Preventiva Vencida!' %}
+      {% elif prev == 'PROXIMA' %}
         {% set badge_class = 'warn' %}
-        {% set badge_text = 'Atenção' %}
+        {% set badge_text  = 'Próxima Preventiva' %}
       {% endif %}
 
-      <div class="truck-card">
-        <div class="truck-illu" aria-hidden="true">
+      <div class="card">
+        <div class="img" aria-hidden="true">
+          <!-- caminhão SVG (não quebra imagens) -->
           <svg viewBox="0 0 128 80" fill="none">
-            <path d="M12 48V28c0-6 5-11 11-11h44c6 0 11 5 11 11v20" fill="white" opacity=".96"/>
-            <path d="M78 32h18c5 0 9 3 11 8l5 14v10H78V32z" fill="white" opacity=".96"/>
+            <path d="M12 48V28c0-6 5-11 11-11h44c6 0 11 5 11 11v20" fill="#ffffff" opacity=".98"/>
+            <path d="M78 32h18c5 0 9 3 11 8l5 14v10H78V32z" fill="#ffffff" opacity=".98"/>
             <path d="M18 64h92v6H18z" fill="rgba(10,43,111,.18)"/>
             <circle cx="34" cy="66" r="10" fill="rgba(10,43,111,.25)"/>
-            <circle cx="34" cy="66" r="6" fill="white"/>
+            <circle cx="34" cy="66" r="6" fill="#ffffff"/>
             <circle cx="92" cy="66" r="10" fill="rgba(10,43,111,.25)"/>
-            <circle cx="92" cy="66" r="6" fill="white"/>
+            <circle cx="92" cy="66" r="6" fill="#ffffff"/>
+            <path d="M20 26h54" stroke="rgba(10,43,111,.25)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M86 42h18" stroke="rgba(10,43,111,.25)" stroke-width="3" stroke-linecap="round"/>
           </svg>
         </div>
 
-        <div class="truck-body">
-          <div class="truck-head">
-            <h3>{{ c.equip.nome }}</h3>
-            <span class="badge {{ badge_class }}">{{ badge_text }}</span>
+        <div>
+          <h3>{{ c.equip.nome }}</h3>
+
+          <div class="meta">Horímetro : <span>{{ c.equip.horimetro_atual }} horas</span></div>
+
+          <div class="meta">Próxima Preventiva : <span>{{ c.prev.texto }}</span></div>
+
+          <div class="row2">
+            <span class="alert {{ badge_class }}">
+              {% if badge_class == 'good' %}✅{% elif badge_class == 'warn' %}⚠️{% else %}⛔{% endif %}
+              {{ badge_text }}
+            </span>
+
+            <div class="badge-num">{{ c.backlog }}</div>
           </div>
 
-          <div class="stats">
-            <div class="stat"><span>TAG</span> <b>{{ c.equip.codigo }}</b></div>
-            <div class="stat"><span>Horímetro</span> <b>{{ c.equip.horimetro_atual }} h</b></div>
-            <div class="stat"><span>Lubrificação</span> <b>{{ 'Vencida' if c.lub.status=='VENCIDA' else ('Próxima' if c.lub.status=='PROXIMA' else 'OK') }}</b></div>
-            <div class="stat"><span>Backlog</span> <b>{{ c.backlog }}</b></div>
-          </div>
-
-          <div class="flags">
-            {% if c.prev.status == 'VENCIDA' %}
-              <span class="flag"><span class="mini-dot bad"></span> Preventiva vencida</span>
-            {% elif c.prev.status == 'PROXIMA' %}
-              <span class="flag"><span class="mini-dot warn"></span> Preventiva próxima</span>
-            {% else %}
-              <span class="flag"><span class="mini-dot good"></span> Preventiva em dia</span>
-            {% endif %}
-
-            {% if c.lub.status == 'VENCIDA' %}
-              <span class="flag"><span class="mini-dot warn"></span> Lubrificação pendente</span>
-            {% else %}
-              <span class="flag"><span class="mini-dot good"></span> Lubrificação OK</span>
-            {% endif %}
-          </div>
+          <div class="meta" style="margin-top:10px;">Backlogs : <span>{{ c.backlog }}</span></div>
         </div>
       </div>
-      {% endfor %}
+    {% endfor %}
+  </div>
+
+  <!-- bottom panels -->
+  <div class="panels">
+    <div class="panel">
+      <h4>Ordens de Serviço Atrasadas</h4>
+      <div class="fake-chart" aria-hidden="true">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+          <path d="M0 28 L12 22 L24 26 L36 18 L48 20 L60 14 L72 16 L84 10 L100 12"
+                fill="none" stroke="rgba(31,107,216,.95)" stroke-width="2.3" />
+          <path d="M0 40 L0 28 L12 22 L24 26 L36 18 L48 20 L60 14 L72 16 L84 10 L100 12 L100 40 Z"
+                fill="rgba(31,107,216,.18)" />
+        </svg>
+      </div>
     </div>
 
+    <div class="panel">
+      <h4>Backlogs por Tipo :</h4>
+      <div class="fake-chart" aria-hidden="true" style="display:grid;place-items:center;">
+        <svg viewBox="0 0 120 80" width="100%" height="100%">
+          <circle cx="60" cy="40" r="26" fill="rgba(31,107,216,.18)"/>
+          <path d="M60 40 L60 14 A26 26 0 0 1 83 53 Z" fill="rgba(255,179,0,.95)"/>
+          <path d="M60 40 L83 53 A26 26 0 0 1 43 60 Z" fill="rgba(214,31,0,.85)"/>
+          <path d="M60 40 L43 60 A26 26 0 0 1 60 14 Z" fill="rgba(13,38,81,.95)"/>
+          <circle cx="60" cy="40" r="12" fill="rgba(244,247,255,.95)"/>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <div>🟦 Mecânica</div>
+        <div>🟨 Elétrica</div>
+        <div>🟥 Outros</div>
+      </div>
+    </div>
   </div>
-</section>
+
+</div>
 {% endblock %}
