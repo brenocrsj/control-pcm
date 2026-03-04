@@ -3,3 +3,5 @@ Flask-SQLAlchemy
 Flask-WTF
 Flask-Login
 email-validator
+gunicorn
+python-dotenv

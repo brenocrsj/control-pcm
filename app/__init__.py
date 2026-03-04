@@ -1,7 +1,17 @@
 from flask import Flask
+
+# Carrega variáveis do .env quando rodando localmente.
+# Em produção (Heroku/Render/etc) as variáveis já vêm do ambiente.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 from .extensions import db, login_manager, csrf
 from .models import User
 from config import Config
+
 
 def create_app():
     app = Flask(__name__)

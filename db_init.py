@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 from app import create_app
-from models import db, Equipment, MaintenancePlan, WorkOrder, PlanType, OsStatus
-
+from app.extensions import db
+from app.models import Equipment, MaintenancePlan, WorkOrder, PlanType, OsStatus
 
 def _resolve_sqlite_path(database_uri: str) -> Path | None:
     """
